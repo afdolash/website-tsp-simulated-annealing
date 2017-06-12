@@ -1,4 +1,4 @@
-var temprature = 0.1;
+var temperature = 0.1;
 var ABSOLUTE_ZERO = 1e-4;
 var COOLING_RATE = 0.999999;
 var CITIES = 50;

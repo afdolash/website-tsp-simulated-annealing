@@ -17,45 +17,30 @@
 
 	<!-- Title -->
 	<title>Simulated Annealing</title>
-</head>
-<body>
-
-	<!-- Load google map -->
-	<div id="map-canvas" style="width: 100%; height: 1024px; float: right;" />
 
 	<!-- Javascript for load google map -->
 	<script>
-	var map;
-	var directionsDisplay = null;
-	var directionsService;
-	var polylinePath;
+	  var nodes = [];
+	  var markers = [];
 
-	var nodes = [];
-	var prevNodes = [];
-	var markers = [];
-	var durations = [];
+	  function myMap() {
+        var map = new google.maps.Map(document.getElementById('map'), {
+          zoom: 4,
+          center: {lat: -24.345, lng: 134.46}  // Australia.
+        });
 
-	// Initialize google maps
-	function myMap() {
-		var mapProp= {
-		    center:new google.maps.LatLng(-7.255868, 112.750815),
-		    zoom:13,
-		    streetViewControl: false,
-		    mapTypeControl: false,
-		};
-		map = new google.maps.Map(document.getElementById("map-canvas"),mapProp);
+        var directionsService = new google.maps.DirectionsService;
+        var directionsDisplay = new google.maps.DirectionsRenderer({
+          draggable: true,
+          map: map,
+        });
 
-		// Create map click event
-	    google.maps.event.addListener(map, 'click', function(event) {
-	        // Add destination (max 9)
-	        if (nodes.length >= 9) {
-	            alert('Max destinations added');
-	            return;
-	        }
+        directionsDisplay.addListener('directions_changed', function() {
+          computeTotalDistance(directionsDisplay.getDirections());
+        });
 
-	        // If there are directions being shown, clear them
-	        clearDirections();
-	        
+        // Create map click event
+	    google.maps.event.addListener(map, 'click', function(event) {      
 	        // Add a node to map
 	        marker = new google.maps.Marker({position: event.latLng, map: map});
 	        markers.push(marker);
@@ -63,188 +48,63 @@
 	        // Store node's lat and lng
 	        nodes.push(event.latLng);
 	        
-	        // Update destination count
-	        $('#destinations-count').html(nodes.length);
+	        displayRoute(nodes[0], nodes[1], directionsService, directionsDisplay);
+
+	        for (index in markers) {
+		        markers[index].setMap(null);
+		    }
+
+		    prevNodes = nodes;
+		    nodes = [];
+		    markers = [];
 	    });
-	}
+      }
 
-	// Get all durations depending on travel type
-	function getDurations(callback) {
-	    var service = new google.maps.DistanceMatrixService();
-	    service.getDistanceMatrix({
-	        origins: nodes,
-	        destinations: nodes,
-	        travelMode: google.maps.TravelMode[$('#travel-type').val()],
-	        avoidHighways: parseInt($('#avoid-highways').val()) > 0 ? true : false,
-	        avoidTolls: false,
-	    }, function(distanceData) {
-	        // Create duration data array
-	        var nodeDistanceData;
-	        for (originNodeIndex in distanceData.rows) {
-	            nodeDistanceData = distanceData.rows[originNodeIndex].elements;
-	            durations[originNodeIndex] = [];
-	            for (destinationNodeIndex in nodeDistanceData) {
-	                if (durations[originNodeIndex][destinationNodeIndex] = nodeDistanceData[destinationNodeIndex].duration == undefined) {
-	                    alert('Error: couldn\'t get a trip duration from API');
-	                    return;
-	                }
-	                durations[originNodeIndex][destinationNodeIndex] = nodeDistanceData[destinationNodeIndex].duration.value;
-	            }
-	        }
+	  function displayRoute(origin, destination, service, display) {
+        service.route({
+          origin: origin,
+          destination: destination,
+          travelMode: google.maps.TravelMode[$('#travmode').val()],
+          // waypoints: [{location: 'Broken Hill, NSW'}, {location: 'Adelaide, SA'}],
+          avoidTolls: true
+        }, function(response, status) {
+          if (status === 'OK') {
+            display.setDirections(response);
+          } else {
+            alert('Could not display directions due to: ' + status);
+          }
+        });
+      }
 
-	        if (callback != undefined) {
-	            callback();
-	        }
-	    });
-	}
-
-	// Removes markers and temporary paths
-	function clearMapMarkers() {
-	    for (index in markers) {
-	        markers[index].setMap(null);
-	    }
-
-	    prevNodes = nodes;
-	    nodes = [];
-
-	    if (polylinePath != undefined) {
-	        polylinePath.setMap(null);
-	    }
-	    
-	    markers = [];
-	    
-	    $('#ga-buttons').show();
-	}
-
-	// Removes map directions
-	function clearDirections() {
-	    // If there are directions being shown, clear them
-	    if (directionsDisplay != null) {
-	        directionsDisplay.setMap(null);
-	        directionsDisplay = null;
-	    }
-	}
-
-	// Completely clears map
-	function clearMap() {
-	    clearMapMarkers();
-	    clearDirections();
-	    
-	    $('#destinations-count').html('0');
-	}
-
-	// Initial Google Maps
-	google.maps.event.addDomListener(window, 'load', myMap);
-
-	// Create listeners
-	$(document).ready(function() {
-	    $('#clear-map').click(clearMap);
-
-	    // Start GA
-	    $('#find-route').click(function() {    
-	        if (nodes.length < 2) {
-	            if (prevNodes.length >= 2) {
-	                nodes = prevNodes;
-	            } else {
-	                alert('Click on the map to select destination points');
-	                return;
-	            }
-	        }
-
-	        if (directionsDisplay != null) {
-	            directionsDisplay.setMap(null);
-	            directionsDisplay = null;
-	        }
-	        
-	        $('#ga-buttons').hide();
-
-	        // Get route durations
-	        getDurations(function(){
-	            $('.ga-info').show();
-
-	            // Get config and create initial GA population
-	            ga.getConfig();
-	            var pop = new ga.population();
-	            pop.initialize(nodes.length);
-	            var route = pop.getFittest().chromosome;
-
-	            ga.evolvePopulation(pop, function(update) {
-	                $('#generations-passed').html(update.generation);
-	                $('#best-time').html((update.population.getFittest().getDistance() / 60).toFixed(2) + ' Mins');
-	            
-	                // Get route coordinates
-	                var route = update.population.getFittest().chromosome;
-	                var routeCoordinates = [];
-	                for (index in route) {
-	                    routeCoordinates[index] = nodes[route[index]];
-	                }
-	                routeCoordinates[route.length] = nodes[route[0]];
-
-	                // Display temp. route
-	                if (polylinePath != undefined) {
-	                    polylinePath.setMap(null);
-	                }
-	                polylinePath = new google.maps.Polyline({
-	                    path: routeCoordinates,
-	                    strokeColor: "#0066ff",
-	                    strokeOpacity: 0.75,
-	                    strokeWeight: 2,
-	                });
-	                polylinePath.setMap(map);
-	            }, function(result) {
-	                // Get route
-	                route = result.population.getFittest().chromosome;
-
-	                // Add route to map
-	                directionsService = new google.maps.DirectionsService();
-	                directionsDisplay = new google.maps.DirectionsRenderer();
-	                directionsDisplay.setMap(map);
-	                var waypts = [];
-	                for (var i = 1; i < route.length; i++) {
-	                    waypts.push({
-	                        location: nodes[route[i]],
-	                        stopover: true
-	                    });
-	                }
-	                
-	                // Add final route to map
-	                var request = {
-	                    origin: nodes[route[0]],
-	                    destination: nodes[route[0]],
-	                    waypoints: waypts,
-	                    travelMode: google.maps.TravelMode[$('#travel-type').val()],
-	                    avoidHighways: parseInt($('#avoid-highways').val()) > 0 ? true : false,
-	                    avoidTolls: false
-	                };
-	                directionsService.route(request, function(response, status) {
-	                    if (status == google.maps.DirectionsStatus.OK) {
-	                        directionsDisplay.setDirections(response);
-	                    }
-	                    clearMapMarkers();
-	                });
-	            });
-	        });
-	    });
-	});
+      function computeTotalDistance(result) {
+        var total = 0;
+        var myroute = result.routes[0];
+        for (var i = 0; i < myroute.legs.length; i++) {
+          total += myroute.legs[i].distance.value;
+        }
+        total = total / 1000;
+        document.getElementById('distance').innerHTML = total + ' km';
+      }
 	</script>
 
-	<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCK6wBEKMl4FJYDQPLS0zKL_GPoRpEPEJs&callback=myMap"></script>
+	<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCK6wBEKMl4FJYDQPLS0zKL_GPoRpEPEJs&callback=myMap"></script>
 
 	<script src="js/close_menu.js"></script>
-	
-	<!--* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-		*															*
-		*															*
-		*		  	      T H E    B E G I N N I N G 				*
-		*															*
-		*															*
-		* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * -->
+</head>
+<body>
+	<!-- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+		 *															 *
+		 *															 *
+		 *		  	      T H E    B E G I N N I N G 				 *
+		 *															 *
+		 *															 *
+		 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * -->
 
 	<!-- Toogle menu -->
 	<i class="fa fa-bars toggle_menu"></i>
 
 	<!-- Sidebar -->
-	<div class="sidebar_menu">
+	<div class="sidebar_menu" style="float: left;">
 		<i class="fa fa-times"></i>
 		<center>
 			<h1 class="boxed_item">TRAVELLING<span class="logo_bold"> SALESMAN</span></h1>
@@ -252,6 +112,20 @@
 		</center>
 
 		<ul class="navigation_section" style="width: 85%;">
+			<li class="navigation_item">
+				<p>TRAVEL MODE</p>
+				<div class="form-group" style="margin-bottom: 0;">
+				  <select class="form-control" id="travmode">
+				    <option value="DRIVING">Driving</option>
+				  	<option value="WALKING">Walking</option>
+				  	<option value="BICYCLING">Bicycling</option>
+				  </select>
+				</div>
+			</li>
+			<li class="navigation_item">
+				<p>DISTANCE</p>
+				<span id="distance" style="margin-left: 12px; margin-bottom: 6px" >0.00 km</span>
+			</li>
 			<li class="navigation_item">
 				<p>INITIAL TEMPERATURE</p>
 				<input type="text" placeholder="Initial temperature" class="form-control" id="temperature" style="margin-bottom: 6px">
@@ -264,27 +138,6 @@
 				<p>COOLING RATE</p>
 				<input type="text" placeholder="Cooling rate" class="form-control" id="coolrate" style="margin-bottom: 6px">
 			</li>
-			<!-- <li class="navigation_item">
-				<p>TRAVEL MODE</p>
-				<div class="form-group" style="margin-bottom: 0;">
-				  <select class="form-control" id="sel-trav-mode">
-				    <option>Car</option>
-				    <option>Bicycle</option>
-				    <option>Walking</option>
-				  </select>
-				</div>
-			</li> -->
-			<!-- <li class="navigation_item">
-				<p>AVOID HIGHWAYS</p>
-				<div class="form-group" style="margin-bottom: 0;">
-				  <label class="radio-inline"><input type="radio" name="rad-avd-hw">Disable</label>
-				  <label class="radio-inline"><input type="radio" name="rad-avd-hw">Enable</label>
-				</div>
-			</li> -->
-			<!-- <li class="navigation_item">
-				<p>SALESMAN</p>
-				<input type="text" placeholder="Number of salesman" class="form-control" id="salesman" style="margin-bottom: 6px">
-			</li> -->
 			<li class="navigation_item">
 				<p>RANDOM NODE</p>
 				<input type="text" placeholder="Number of node" class="form-control" id="cities" style="margin-bottom: 6px">
@@ -313,9 +166,9 @@
 							  </h1>
 						  	</a>
 				  		  </th>
-				  		  <th>
-			  				<a href="#">
-							  <h1 class="boxed_item boxed_item_smaller" style="width: 98.5%; margin-left: 3px;">
+				  		  <th id="find-route">
+			  				<a href="#" id="find-route">
+							  <h1 id="find-route" class="boxed_item boxed_item_smaller" style="width: 98.5%; margin-left: 3px;">
 							    START
 							  </h1>
 						  	</a>
@@ -328,5 +181,7 @@
 	</div>
 	<!-- End of sidebar -->
 
+	<!-- Load google map -->
+	<div id="map" style="z-index: -9999; width: 100%; height: 1024px; float: right;" />
 </body>
 </html>
