@@ -21,7 +21,6 @@
 
 	<!-- Javascript for load google map -->
 	<script>
-	  var map;
 	  var directionsService;
 	  var directionsDisplay;
 
@@ -30,7 +29,7 @@
 	  var waypoints = [];
 
 	  function myMap() {
-        map = new google.maps.Map(document.getElementById('map'), {
+        var map = new google.maps.Map(document.getElementById('map'), {
           zoom: 4,
           center: {lat: -24.345, lng: 134.46}  // Australia.
         });
@@ -56,13 +55,25 @@
 	        
 	        // Store node's lat and lng
 	        nodes.push(event.latLng);
+	        
+	        // displayRoute(result[0], result[1], directionsService, directionsDisplay);
+
+	     //    for (index in markers) {
+		    //     markers[index].setMap(null);
+		    // }
+
+		    // prevNodes = nodes;
+		    // nodes = [];
+		    // markers = [];
+		    document.getElementById('lat').innerHTML = nodes[0].lat();
+		    document.getElementById('lng').innerHTML = nodes[0].lng();
 	    });
       }
 
       function configRoute() {
       	waypoints = [];
 
-      	for (var i = 0; i < result.length - 1; i++) {
+      	for (var i = 0; i < result.length - 2; i++) {
       		waypoints.push({
       			location: new google.maps.LatLng(result[i+1][0], result[i+1][1]),
       			stopover: true
@@ -70,31 +81,20 @@
       	}
 
       	var from = new google.maps.LatLng(result[0][0], result[0][1]);
-      	var destination = new google.maps.LatLng(result[0][0], result[0][1]);
+      	var destination = new google.maps.LatLng(result[result.length-1][0], result[result.length-1][1]);
 
-	    if (directionsDisplay != null) {
-	    	displayRoute(from, destination, directionsService, directionsDisplay);
-	    } else {
-	    	directionsDisplay = new google.maps.DirectionsRenderer({
-	          draggable: true,
-	          map: map,
-	        });
+	    displayRoute(from, destination, directionsService, directionsDisplay);
 
-	        directionsDisplay.addListener('directions_changed', function() {
-	          computeTotalDistance(directionsDisplay.getDirections());
-	        });
-
-	    	displayRoute(from, destination, directionsService, directionsDisplay);
-	    }
-
-	    clearMapMarkers();
+      	document.getElementById('waypoints').innerHTML = waypoints;
+      	document.getElementById('from').innerHTML = result[0];
+      	document.getElementById('to').innerHTML = result[result.length - 1];
       }
 
-	  function displayRoute(origin, destination, service, display) {	
+	  function displayRoute(origin, destination, service, display) {
         service.route({
           origin: origin,
           destination: destination,
-          travelMode: google.maps.TravelMode[$('#travmode').val()],
+          travelMode: 'DRIVING',
           waypoints: waypoints,
           avoidTolls: true
         }, function(response, status) {
@@ -116,24 +116,10 @@
         document.getElementById('distance').innerHTML = total + ' km';
       }
 
-      function clearMapMarkers() {
-	    for (index in markers) {
-	        markers[index].setMap(null);
-	    }
+      /**
+      	* Simulated Annealing
+      	**/
 
-	    prevNodes = nodes;
-	    nodes = [];
-	    markers = [];	    
-	  }
-
-	  // Removes map directions
-	  function clearDirections() {
-	    // If there are directions being shown, clear them
-	    if (directionsDisplay != null) {
-	        directionsDisplay.setMap(null);
-        	directionsDisplay = null;
-	    }
-	  }
 	</script>
 
 	<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCK6wBEKMl4FJYDQPLS0zKL_GPoRpEPEJs&callback=myMap"></script>
@@ -149,91 +135,65 @@
 		 *															 *
 		 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * -->
 
-	<!-- Toogle menu -->
-	<i class="fa fa-bars toggle_menu"></i>
-
-	<!-- Sidebar -->
-	<div class="sidebar_menu" style="float: left;">
-		<i class="fa fa-times"></i>
-		<center>
-			<h1 class="boxed_item">TRAVELLING<span class="logo_bold"> SALESMAN</span></h1>
-			<h2 class="logo_title">Simulated Annealing</h2>
-		</center>
-
-		<ul class="navigation_section" style="width: 85%;">
-			<li class="navigation_item">
-				<p>TRAVEL MODE</p>
-				<div class="form-group" style="margin-bottom: 0;">
-				  <select class="form-control" id="travmode">
-				    <option value="DRIVING">Driving</option>
-				  	<option value="WALKING">Walking</option>
-				  	<option value="BICYCLING">Bicycling</option>
-				  </select>
-				</div>
-			</li>
-			<li class="navigation_item">
-				<p>DISTANCE</p>
-				<span id="distance" style="margin-left: 12px; margin-bottom: 6px" >0.00 km</span>
-			</li>
-			<li class="navigation_item">
-				<p>INITIAL TEMPERATURE</p>
-				<input type="text" placeholder="Initial temperature" class="form-control" id="temperature" value="0.1" style="margin-bottom: 6px">
-			</li>
-			<li class="navigation_item">
-				<p>ABSOLUTE ZERO</p>
-				<input type="text" placeholder="Absolute zero" class="form-control" id="abszero" value="0.0001" style="margin-bottom: 6px">
-			</li>
-			<li class="navigation_item">
-				<p>COOLING RATE</p>
-				<input type="text" placeholder="Cooling rate" class="form-control" id="coolrate" value="0.99999" style="margin-bottom: 6px">
-			</li>
-			<li class="navigation_item">
-				<p>RANDOM NODE</p>
-				<input type="text" placeholder="Number of node" class="form-control" id="cities" style="margin-bottom: 6px">
-				<center>
-					<a href="#">
-					  <h1 class="boxed_item boxed_item_smaller" style="width: 100%;">
-					    RANDOM
-					  </h1>
-				  	</a>
-				</center>
-			</li>
-			<li>
-				<br><br><br>
-				<center>
-					<a href="#">
-					  <h1 class="boxed_item boxed_item_smaller" style="width: 100%; margin-bottom: 6px">
-					    VIEW LOG
-					  </h1>
-				  	</a>
-				  	<table style="width: 100%;">
-				  		<tr>
-				  		  <th>
-			  				<a href="#" id="clearDirections" onclick="clearDirections();">
-							  <h1 class="boxed_item boxed_item_smaller" style="width: 98.5%; margin-right: 3px;">
-							    CLEAR
-							  </h1>
-						  	</a>
-				  		  </th>
-				  		  <th>
-				  		  	<a href="#" id="solve">
-							  <h1 class="boxed_item boxed_item_smaller" style="width: 98.5%; margin-right: 3px;">
-							    SOLVE
-							  </h1>
-						  	</a>
-				  		  </th>
-				  		</tr>
-				  	</table>
-				</center>
-			</li>
-		</ul>
+	<div>
+		<p>LATITUDE</p>
+		<span id="lat" style="margin-left: 12px; margin-bottom: 6px" >0.00</span>
+		<p>LONGITUDE</p>
+		<span id="lng" style="margin-left: 12px; margin-bottom: 6px" >0.00</span>
+		<p>RESULT</p>
+		<span id="result" style="margin-left: 12px; margin-bottom: 6px" >0.00</span>
+		<p>DISTANCE</p>
+		<span id="distance" style="margin-left: 12px; margin-bottom: 6px" >0.00</span>
+		<p>WAYPOINTS</p>
+		<span id="waypoints" style="margin-left: 12px; margin-bottom: 6px" >0.00</span>
+		<p>FROM</p>
+		<span id="from" style="margin-left: 12px; margin-bottom: 6px" >0.00</span>
+		<p>TO</p>
+		<span id="to" style="margin-left: 12px; margin-bottom: 6px" >0.00</span>
 	</div>
-	<!-- End of sidebar -->
+	<div>
+		<div id="settings">
+			<h2><i class="fa fa-cog"></i> SETTINGS</h2>
+			<table>
+				<tbody>
+					<tr>
+						<td>Cities</td>
+						<td>
+						<input type="text" id="cities" value="10"></input>
+						</td>
+					</tr>
+					<tr>
+						<td>Initial Temperature</td>
+						<td>
+						<input type="text" id="temperature" value="0.1"></input>
+						</td>
+					</tr>
+					<tr>
+						<td>Absolute Zero</td>
+						<td>
+						<input type="text" id="abszero" value=".0001"></input>
+						</td>
+					</tr>
+					<tr>
+						<td>Cooling Rate</td>
+						<td>
+						<input type="text" id="coolrate" value="0.99999"></input>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+			<div style="margin: 15px auto; width: 100px; border: 1px solid black;">
+				<button id="solve">Solve</button>
+			</div>
+		</div>
+		<canvas id="tsp-canvas" width="700" height="600">
+			HTML5 Unsupported.
+		</canvas>
+	</div>
 
 	<!-- Load google map -->
 	<div id="map" style="z-index: -9999; width: 100%; height: 1024px; float: right;" />
 
-	<!-- Simulated Annealing -->
 	<script type="text/javascript">
 		var temperature = 0.1;
 		var ABSOLUTE_ZERO = 1e-4;
@@ -255,6 +215,9 @@
 						init();
 					});
 			});
+
+		var tsp_canvas = document.getElementById('tsp-canvas');
+		var tsp_ctx = tsp_canvas.getContext("2d");
 
 		//init();
 
@@ -370,11 +333,33 @@
 
 		function paint()
 		{
+			tsp_ctx.clearRect(0,0, tsp_canvas.width, tsp_canvas.height);
+			// Cities
+			for(var i=0; i<CITIES; i++)
+			{
+				tsp_ctx.beginPath();
+				tsp_ctx.arc(best[i][0], best[i][1], 4, 0, 2*Math.PI);
+				tsp_ctx.fillStyle = "#0000ff";
+				tsp_ctx.strokeStyle = "#000";
+				tsp_ctx.closePath();
+				tsp_ctx.fill();
+				tsp_ctx.lineWidth=1;
+				tsp_ctx.stroke();
+			}
+			// Links
+			tsp_ctx.strokeStyle = "#ff0000";
+			tsp_ctx.lineWidth=2;
+			tsp_ctx.moveTo(best[0][0], best[0][1]);
 			result[0] = [best[0][0], best[0][1]];
 			for(var i=0; i<CITIES-1; i++)
 			{
+				tsp_ctx.lineTo(best[i+1][0], best[i+1][1]);
 				result[i+1] = [best[i+1][0], best[i+1][1]];
 			}
+			document.getElementById('result').innerHTML = result;
+			tsp_ctx.lineTo(best[0][0], best[0][1]);
+			tsp_ctx.stroke();
+			tsp_ctx.closePath();
 		}
 	</script>
 </body>
