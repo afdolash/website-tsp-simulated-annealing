@@ -31,8 +31,8 @@
 
 	  function myMap() {
         map = new google.maps.Map(document.getElementById('map'), {
-          zoom: 4,
-          center: {lat: -24.345, lng: 134.46}  // Australia.
+          zoom: 12,
+          center: {lat: -7.257931, lng: 112.757346}  // Australia.
         });
 
         directionsService = new google.maps.DirectionsService;
@@ -59,7 +59,7 @@
 	    });
       }
 
-      function configRoute() {
+      function configWaypoints(requestCode) {
       	waypoints = [];
 
       	for (var i = 0; i < result.length - 1; i++) {
@@ -73,7 +73,7 @@
       	var destination = new google.maps.LatLng(result[0][0], result[0][1]);
 
 	    if (directionsDisplay != null) {
-	    	displayRoute(from, destination, directionsService, directionsDisplay);
+	    	displayRoute(from, destination, directionsService, directionsDisplay, requestCode);
 	    } else {
 	    	directionsDisplay = new google.maps.DirectionsRenderer({
 	          draggable: true,
@@ -84,27 +84,52 @@
 	          computeTotalDistance(directionsDisplay.getDirections());
 	        });
 
-	    	displayRoute(from, destination, directionsService, directionsDisplay);
+	    	displayRoute(from, destination, directionsService, directionsDisplay, requestCode);
 	    }
 
 	    clearMapMarkers();
       }
 
-	  function displayRoute(origin, destination, service, display) {	
+	  function displayRoute(origin, destination, service, display, requestCode) {	
         service.route({
           origin: origin,
           destination: destination,
-          travelMode: google.maps.TravelMode[$('#travmode').val()],
+          travelMode: 'DRIVING',
           waypoints: waypoints,
           avoidTolls: true
         }, function(response, status) {
           if (status === 'OK') {
             display.setDirections(response);
+            if (requestCode == 1) {
+            	driveSim(response);
+            }
           } else {
-            alert('Could not display directions due to: ' + status);
+            // alert('Could not display directions due to: ' + status);
           }
         });
       }
+
+      function driveSim (response){
+    	var path = response.routes[0].overview_path;
+	    var maxIter = path.length;
+
+	    taxiCab = new google.maps.Marker({
+	       position: path[0],
+	       map: map, 
+	    });
+
+	    var delay = 150, count = 0;
+	    function delayed () {
+	      taxiCab.setPosition({lat:path[count].lat(),lng:path[count].lng()});
+	      if (count < maxIter-1) {
+	        setTimeout(delayed, delay);
+	      }
+	      count += 1;
+
+	    }
+
+	    delayed();	    
+	  }  
 
       function computeTotalDistance(result) {
         var total = 0;
@@ -117,9 +142,11 @@
       }
 
       function clearMapMarkers() {
-	    for (index in markers) {
-	        markers[index].setMap(null);
-	    }
+	    for (var i = 0; i < markers.length; i++) {
+          markers[i].setMap(null);
+        }
+
+	  	taxiCab.setMap(null);
 
 	    prevNodes = nodes;
 	    nodes = [];
@@ -133,6 +160,8 @@
 	        directionsDisplay.setMap(null);
         	directionsDisplay = null;
 	    }
+
+	    clearMapMarkers();
 	  }
 	</script>
 
@@ -161,7 +190,7 @@
 		</center>
 
 		<ul class="navigation_section" style="width: 85%;">
-			<li class="navigation_item">
+			<!-- <li class="navigation_item">
 				<p>TRAVEL MODE</p>
 				<div class="form-group" style="margin-bottom: 0;">
 				  <select class="form-control" id="travmode">
@@ -170,7 +199,7 @@
 				  	<option value="BICYCLING">Bicycling</option>
 				  </select>
 				</div>
-			</li>
+			</li> -->
 			<li class="navigation_item">
 				<p>DISTANCE</p>
 				<span id="distance" style="margin-left: 12px; margin-bottom: 6px" >0.00 km</span>
@@ -181,11 +210,11 @@
 			</li>
 			<li class="navigation_item">
 				<p>ABSOLUTE ZERO</p>
-				<input type="text" placeholder="Absolute zero" class="form-control" id="abszero" value="0.0001" style="margin-bottom: 6px">
+				<input type="text" placeholder="Absolute zero" class="form-control" id="abszero" value="0.01" style="margin-bottom: 6px">
 			</li>
 			<li class="navigation_item">
 				<p>COOLING RATE</p>
-				<input type="text" placeholder="Cooling rate" class="form-control" id="coolrate" value="0.99999" style="margin-bottom: 6px">
+				<input type="text" placeholder="Cooling rate" class="form-control" id="coolrate" value="0.99" style="margin-bottom: 6px">
 			</li>
 			<li class="navigation_item">
 				<p>RANDOM NODE</p>
@@ -210,14 +239,14 @@
 				  		<tr>
 				  		  <th>
 			  				<a href="#" id="clearDirections" onclick="clearDirections();">
-							  <h1 class="boxed_item boxed_item_smaller" style="width: 98.5%; margin-right: 3px;">
+							  <h1 class="boxed_item boxed_item_smaller" style="width: 98%; margin-right: 3px;">
 							    CLEAR
 							  </h1>
 						  	</a>
 				  		  </th>
 				  		  <th>
 				  		  	<a href="#" id="solve">
-							  <h1 class="boxed_item boxed_item_smaller" style="width: 98.5%; margin-right: 3px;">
+							  <h1 class="boxed_item boxed_item_smaller" style="width: 98%; margin-left: 3px;">
 							    SOLVE
 							  </h1>
 						  	</a>
@@ -236,13 +265,14 @@
 	<!-- Simulated Annealing -->
 	<script type="text/javascript">
 		var temperature = 0.1;
-		var ABSOLUTE_ZERO = 1e-4;
-		var COOLING_RATE = 0.999999;
+		var ABSOLUTE_ZERO = 0.01;
+		var COOLING_RATE = 0.99;
 		var CITIES = nodes.length;
 		var current = [];
 		var best = [];
 		var best_cost = 0;
 		var result = [];
+		var status;
 
 		$(document).ready(function()
 			{
@@ -252,6 +282,7 @@
 						ABSOLUTE_ZERO = parseFloat($("#abszero").val());
 						COOLING_RATE = parseFloat($("#coolrate").val());
 						CITIES = nodes.length;
+						status = 0;
 						init();
 					});
 			});
@@ -334,7 +365,7 @@
 
 			deep_copy(current, best);
 			best_cost = getCost(best);
-			setInterval(solve, 10);
+			setInterval(solve, 20);
 		}
 
 		function solve()
@@ -362,19 +393,23 @@
 					deep_copy(current, best);
 					best_cost = current_cost;
 					paint();
-					configRoute();
 				}
 				temperature *= COOLING_RATE;
+			} else if (status == 0) {
+				configWaypoints(1);
+
+				status = 1;
 			}
 		}
 
 		function paint()
 		{
-			result[0] = [best[0][0], best[0][1]];
-			for(var i=0; i<CITIES-1; i++)
+			for(var i=0; i<CITIES; i++)
 			{
-				result[i+1] = [best[i+1][0], best[i+1][1]];
+				result[i] = [best[i][0], best[i][1]];
 			}
+
+			configWaypoints(0);
 		}
 	</script>
 </body>

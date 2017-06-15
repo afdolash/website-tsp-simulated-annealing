@@ -36,9 +36,9 @@
           map: map,
         });
 
-        // directionsDisplay.addListener('directions_changed', function() {
-        //   computeTotalDistance(directionsDisplay.getDirections());
-        // });
+        directionsDisplay.addListener('directions_changed', function() {
+          computeTotalDistance(directionsDisplay.getDirections());
+        });
 
         // Create map click event
 	    google.maps.event.addListener(map, 'click', function(event) {      
