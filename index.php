@@ -35,11 +35,33 @@
           center: {lat: -7.257931, lng: 112.757346}  // Australia.
         });
 
+  //       var nilai_mix = [5];
+
+  //       $(document).ready(function()
+		// 	{
+		// 		$("#campur").click(function()
+		// 			{
+		// 				nilai_mix = parseInt($("#cities").val());
+		// 			});
+		// 	});
+
+  //       google.maps.event.addListener(map, 'tilesloaded', function () {
+  //    		var mapBounds = map.getBounds();
+		//     for (var i = 0; i < nilai_mix.length; i++) {
+		//       new google.maps.Marker({
+		//         position: getRandom_marker(mapBounds), 
+		//         map: map
+		//       });   
+		//     }
+		// });
+
         directionsService = new google.maps.DirectionsService;
         directionsDisplay = new google.maps.DirectionsRenderer({
           draggable: true,
           map: map,
         });
+
+
 
         directionsDisplay.addListener('directions_changed', function() {
           computeTotalDistance(directionsDisplay.getDirections());
@@ -163,6 +185,127 @@
 
 	    clearMapMarkers();
 	  }
+   
+
+
+   var map;
+
+  var arrMarkers=new Array(0);
+
+  var bounds;
+
+function initialize() 
+
+  {
+
+  var latlng = new google.maps.LatLng(-7.257931, 112.757346);
+
+  var myOptions = {zoom:12,center:latlng,mapTypeId:google.maps.MapTypeId.HYBRID,mapTypeControlOptions:{style:google.maps.MapTypeControlStyle.DROPDOWN_MENU}};
+
+  map = new google.maps.Map(document.getElementById("map_canvas"),myOptions);
+
+  }
+
+function ftn_button_clicked()
+
+  {
+
+  if (arrMarkers) 
+
+  {
+
+  for (i in arrMarkers) 
+
+  {
+
+  arrMarkers[i].setMap(null)
+
+  }
+
+  }
+
+  arrMarkers=new Array(0);
+
+  var num=document.getElementById("nm").value;
+
+  if (num<1000)
+
+  {
+
+  plotrandom(num);
+
+  }
+
+  }
+
+function plotrandom(number)
+
+  {
+
+  bounds = map.getBounds();
+
+  var southWest = new google.maps.LatLng(-7.237931, 112.757346);
+
+  var northEast = new google.maps.LatLng(-7.357931, 112.687346);
+
+  var lngSpan = northEast.lng() - southWest.lng();
+
+  var latSpan = northEast.lat() - southWest.lat();
+
+  pointsrand=[];
+
+  
+
+  for(var i=0;i<number;++i)
+
+  {
+
+  var point = new google.maps.LatLng(southWest.lat() + latSpan * Math.random(),southWest.lng() + lngSpan * Math.random());
+
+  pointsrand.push(point);
+
+// Store node's lat and lng
+nodes.push(pointsrand[i]);
+
+  
+
+  }
+
+
+  for(var i=0;i<number;++i)
+
+  {
+
+  var str_text=i+" : "+pointsrand[i];
+
+  var marker=placeMarker(pointsrand[i],str_text);
+
+  arrMarkers.push(marker);
+
+  marker.setMap(map);
+ 
+
+  }
+ 
+   
+  }
+
+function placeMarker(location,text) 
+
+  { 
+
+  var iconFile = 'https://www.daftlogic.com/images/gmmarkersv3/stripes.png'; 
+
+  var marker = new google.maps.Marker({
+  	position:location,
+  	map:map,
+  	title:text.toString(),
+  	draggable:false});
+
+  return marker;
+
+  }
+   
 	</script>
 
 	<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCK6wBEKMl4FJYDQPLS0zKL_GPoRpEPEJs&callback=myMap"></script>
@@ -218,9 +361,9 @@
 			</li>
 			<li class="navigation_item">
 				<p>RANDOM NODE</p>
-				<input type="text" placeholder="Number of node" class="form-control" id="cities" style="margin-bottom: 6px">
+				<input type="text" placeholder="Number of node" class="form-control" id="nm" value="5" style="margin-bottom: 6px">
 				<center>
-					<a href="#">
+					<a href="#" onclick="ftn_button_clicked()">
 					  <h1 class="boxed_item boxed_item_smaller" style="width: 100%;">
 					    RANDOM
 					  </h1>
@@ -230,11 +373,6 @@
 			<li>
 				<br><br><br>
 				<center>
-					<a href="#">
-					  <h1 class="boxed_item boxed_item_smaller" style="width: 100%; margin-bottom: 6px">
-					    VIEW LOG
-					  </h1>
-				  	</a>
 				  	<table style="width: 100%;">
 				  		<tr>
 				  		  <th>
