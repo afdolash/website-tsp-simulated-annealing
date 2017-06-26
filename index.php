@@ -28,41 +28,24 @@
 	  var nodes = [];
 	  var markers = [];
 	  var waypoints = [];
+	  var arrMarkers = [];
+	  var marker;
+      var bounds;
 
 	  function myMap() {
+	  	// Make new map
         map = new google.maps.Map(document.getElementById('map'), {
           zoom: 12,
           center: {lat: -7.257931, lng: 112.757346}  // Australia.
         });
 
-  //       var nilai_mix = [5];
-
-  //       $(document).ready(function()
-		// 	{
-		// 		$("#campur").click(function()
-		// 			{
-		// 				nilai_mix = parseInt($("#cities").val());
-		// 			});
-		// 	});
-
-  //       google.maps.event.addListener(map, 'tilesloaded', function () {
-  //    		var mapBounds = map.getBounds();
-		//     for (var i = 0; i < nilai_mix.length; i++) {
-		//       new google.maps.Marker({
-		//         position: getRandom_marker(mapBounds), 
-		//         map: map
-		//       });   
-		//     }
-		// });
-
         directionsService = new google.maps.DirectionsService;
         directionsDisplay = new google.maps.DirectionsRenderer({
-          draggable: true,
-          map: map,
+          draggable: false,
+          map: map
         });
 
-
-
+        // Calculate direction distance
         directionsDisplay.addListener('directions_changed', function() {
           computeTotalDistance(directionsDisplay.getDirections());
         });
@@ -72,7 +55,8 @@
 	        // Add a node to map
 	        marker = new google.maps.Marker({
 	        	position: event.latLng, 
-	        	map: map
+	        	map: map,
+	        	draggable: false
 	        });
 	        markers.push(marker);
 	        
@@ -81,6 +65,7 @@
 	    });
       }
 
+      // Set waypoints by node, after filtering in Simulated Annealing
       function configWaypoints(requestCode) {
       	waypoints = [];
 
@@ -98,8 +83,8 @@
 	    	displayRoute(from, destination, directionsService, directionsDisplay, requestCode);
 	    } else {
 	    	directionsDisplay = new google.maps.DirectionsRenderer({
-	          draggable: true,
-	          map: map,
+	          draggable: false,
+	          map: map
 	        });
 
 	        directionsDisplay.addListener('directions_changed', function() {
@@ -112,6 +97,7 @@
 	    clearMapMarkers();
       }
 
+      // Display the route by nodes
 	  function displayRoute(origin, destination, service, display, requestCode) {	
         service.route({
           origin: origin,
@@ -131,28 +117,53 @@
         });
       }
 
+      // Make animate marker on direction
       function driveSim (response){
     	var path = response.routes[0].overview_path;
 	    var maxIter = path.length;
 
+	    // Make new marker
 	    taxiCab = new google.maps.Marker({
 	       position: path[0],
 	       map: map, 
 	    });
 
+	    // Delay animate
 	    var delay = 150, count = 0;
 	    function delayed () {
 	      taxiCab.setPosition({lat:path[count].lat(),lng:path[count].lng()});
 	      if (count < maxIter-1) {
 	        setTimeout(delayed, delay);
+	      } else {
+	      	taxiCab.setMap(null);
 	      }
-	      count += 1;
 
+	      count += 1;
 	    }
 
 	    delayed();	    
 	  }  
 
+	  // Removes markers and temporary paths
+	  function clearMapMarkers() {
+	    for (index in markers) {
+	        markers[index].setMap(null);
+	    }
+
+	    prevNodes = nodes;
+	    nodes = [];
+	    markers = [];
+	  }
+
+	  function clearDirection() {
+	  	// If there are directions being shown, clear them
+	    if (directionsDisplay != null) {
+	        directionsDisplay.setMap(null);
+	        directionsDisplay = null;
+	    }
+	  }
+
+	  // Calculate direction distance
       function computeTotalDistance(result) {
         var total = 0;
         var myroute = result.routes[0];
@@ -163,166 +174,126 @@
         document.getElementById('distance').innerHTML = total + ' km';
       }
 
-      function clearMapMarkers() {
-	    for (var i = 0; i < markers.length; i++) {
-          markers[i].setMap(null);
+	  // Initialize of random node
+      function initialize() {
+      	var latlng = new google.maps.LatLng(-7.257931, 112.757346);
+      	var myOptions = {
+      		zoom:12,
+      		center:latlng,
+      		mapTypeId:google.maps.MapTypeId.HYBRID,
+      		mapTypeControlOptions:
+      		{
+      			style:google.maps.MapTypeControlStyle.DROPDOWN_MENU
+      		}
+      	};
+
+      	map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
+      }
+
+      // Event if button random cliked
+      function ftn_button_clicked() {
+      	// Clear arrMaker value
+      	if (arrMarkers) {
+      		for (i in arrMarkers) {
+      			arrMarkers[i].setMap(null);
+      		}
+      	}
+
+      	arrMarkers = new Array(0);
+      	var num = document.getElementById("nm").value;
+
+      	if (num < 1000) {
+      		plotrandom(num);
+      	}
+      }
+
+      // Plant the random marker
+      function plotrandom(number) {
+      	// Bounds random marker on the map
+      	bounds = map.getBounds();
+
+      	var southWest = new google.maps.LatLng(-7.237931, 112.757346);
+      	var northEast = new google.maps.LatLng(-7.357931, 112.687346);
+      	var lngSpan = northEast.lng() - southWest.lng();
+      	var latSpan = northEast.lat() - southWest.lat();
+
+      	nodes = [];
+      	pointsrand = [];
+
+      	// Push the LatLng of random marker to nodes[]
+      	for(var i=0;i<number;++i) {
+      		var point = new google.maps.LatLng(southWest.lat() + latSpan * Math.random(),southWest.lng() + lngSpan * Math.random());
+      		pointsrand.push(point);
+
+      		// Store node's lat and lng
+      		nodes.push(pointsrand[i]);
+      	}
+
+      	// Place random marker on the map
+      	for(var i=0;i<number;++i) {
+      		marker = placeMarker(pointsrand[i]);
+
+      		arrMarkers.push(marker);
+      		marker.setMap(map);
+      	}
+      }
+
+      // Marker option of random marker
+      function placeMarker(location) { 
+      	var marker = new google.maps.Marker({
+      		position:location,
+      		map:map,
+      		draggable:false,
+      		optimized: false,
+      		zIndex:-99999999
+      	});
+
+      	return marker;
+      }
+
+      // View distance detail
+      function viewLog() {
+      	var result = directionsDisplay.getDirections();
+        var total = 0;
+        var myroute = result.routes[0];
+        var text = "";
+
+        for (var i = 0; i < myroute.legs.length; i++) {
+          total += myroute.legs[i].distance.value;
+          text = text + " Node "+ (i+1) +" - Node "+ (i+2) +" : "+ myroute.legs[i].distance.value / 1000 +"<br>";
         }
 
-	  	taxiCab.setMap(null);
+        total = total / 1000;
+        text = text + " <br><b>Total distance of nodes : "+ total +"<b>";
+        document.getElementById('viewlog-body').innerHTML = ""+ text;
+      }
 
-	    prevNodes = nodes;
-	    nodes = [];
-	    markers = [];	    
-	  }
-
-	  // Removes map directions
-	  function clearDirections() {
-	    // If there are directions being shown, clear them
-	    if (directionsDisplay != null) {
-	        directionsDisplay.setMap(null);
-        	directionsDisplay = null;
-	    }
-
-	    clearMapMarkers();
-	  }
-   
-
-
-   var map;
-
-  var arrMarkers=new Array(0);
-
-  var bounds;
-
-function initialize() 
-
-  {
-
-  var latlng = new google.maps.LatLng(-7.257931, 112.757346);
-
-  var myOptions = {zoom:12,center:latlng,mapTypeId:google.maps.MapTypeId.HYBRID,mapTypeControlOptions:{style:google.maps.MapTypeControlStyle.DROPDOWN_MENU}};
-
-  map = new google.maps.Map(document.getElementById("map_canvas"),myOptions);
-
-  }
-
-function ftn_button_clicked()
-
-  {
-
-  if (arrMarkers) 
-
-  {
-
-  for (i in arrMarkers) 
-
-  {
-
-  arrMarkers[i].setMap(null)
-
-  }
-
-  }
-
-  arrMarkers=new Array(0);
-
-  var num=document.getElementById("nm").value;
-
-  if (num<1000)
-
-  {
-
-  plotrandom(num);
-
-  }
-
-  }
-
-function plotrandom(number)
-
-  {
-
-  bounds = map.getBounds();
-
-  var southWest = new google.maps.LatLng(-7.237931, 112.757346);
-
-  var northEast = new google.maps.LatLng(-7.357931, 112.687346);
-
-  var lngSpan = northEast.lng() - southWest.lng();
-
-  var latSpan = northEast.lat() - southWest.lat();
-
-  pointsrand=[];
-
-  
-
-  for(var i=0;i<number;++i)
-
-  {
-
-  var point = new google.maps.LatLng(southWest.lat() + latSpan * Math.random(),southWest.lng() + lngSpan * Math.random());
-
-  pointsrand.push(point);
-
-// Store node's lat and lng
-nodes.push(pointsrand[i]);
-
-  
-
-  }
-
-
-  for(var i=0;i<number;++i)
-
-  {
-
-  var str_text=i+" : "+pointsrand[i];
-
-  var marker=placeMarker(pointsrand[i],str_text);
-
-  arrMarkers.push(marker);
-
-  marker.setMap(map);
- 
-
-  }
- 
-   
-  }
-
-function placeMarker(location,text) 
-
-  { 
-
-  var iconFile = 'https://www.daftlogic.com/images/gmmarkersv3/stripes.png'; 
-
-  var marker = new google.maps.Marker({
-  	position:location,
-  	map:map,
-  	title:text.toString(),
-  	draggable:false});
-
-  return marker;
-
-  }
-   
 	</script>
 
 	<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCK6wBEKMl4FJYDQPLS0zKL_GPoRpEPEJs&callback=myMap"></script>
-
 	<script src="js/close_menu.js"></script>
-</head>
-<body>
-	<!-- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-		 *															 *
-		 *															 *
-		 *		  	      T H E    B E G I N N I N G 				 *
-		 *															 *
-		 *															 *
-		 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * -->
 
+</head>
+
+<body>
 	<!-- Toogle menu -->
 	<i class="fa fa-bars toggle_menu"></i>
+
+	<!-- Modal -->
+    <div class="modal fade" id="myViewlog" role="dialog">
+      <div class="modal-dialog">
+        <!-- Modal content-->
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal">&times;</button>
+            <h4 class="modal-title">Detail Distance</h4>
+          </div>
+          <div id="viewlog-body" class="modal-body">
+          	<!-- Text here -->
+          </div>
+        </div>  
+      </div>
+    </div>
 
 	<!-- Sidebar -->
 	<div class="sidebar_menu" style="float: left;">
@@ -333,16 +304,6 @@ function placeMarker(location,text)
 		</center>
 
 		<ul class="navigation_section" style="width: 85%;">
-			<!-- <li class="navigation_item">
-				<p>TRAVEL MODE</p>
-				<div class="form-group" style="margin-bottom: 0;">
-				  <select class="form-control" id="travmode">
-				    <option value="DRIVING">Driving</option>
-				  	<option value="WALKING">Walking</option>
-				  	<option value="BICYCLING">Bicycling</option>
-				  </select>
-				</div>
-			</li> -->
 			<li class="navigation_item">
 				<p>DISTANCE</p>
 				<span id="distance" style="margin-left: 12px; margin-bottom: 6px" >0.00 km</span>
@@ -363,7 +324,7 @@ function placeMarker(location,text)
 				<p>RANDOM NODE</p>
 				<input type="text" placeholder="Number of node" class="form-control" id="nm" value="5" style="margin-bottom: 6px">
 				<center>
-					<a href="#" onclick="ftn_button_clicked()">
+					<a href="#" id="random" onclick="ftn_button_clicked()">
 					  <h1 class="boxed_item boxed_item_smaller" style="width: 100%;">
 					    RANDOM
 					  </h1>
@@ -375,10 +336,17 @@ function placeMarker(location,text)
 				<center>
 				  	<table style="width: 100%;">
 				  		<tr>
+				  			<a href="#" id="viewlog" data-toggle="modal" data-target="#myViewlog" onclick="viewLog()">
+							  <h1 class="boxed_item boxed_item_smaller" style="width: 100%; margin-bottom: 6px;">
+							    DETAIL DISTANCE
+							  </h1>
+						  	</a>
+				  		</tr>
+				  		<tr>
 				  		  <th>
-			  				<a href="#" id="clearDirections" onclick="clearDirections();">
+			  				<a href="#" id="reload" onClick="window.location.reload()">
 							  <h1 class="boxed_item boxed_item_smaller" style="width: 98%; margin-right: 3px;">
-							    CLEAR
+							    RELOAD
 							  </h1>
 						  	</a>
 				  		  </th>
