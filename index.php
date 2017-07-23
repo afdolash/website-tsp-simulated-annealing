@@ -395,19 +395,9 @@
 
 		//init();
 
-		function randomFloat(n)
-		{
-			return (Math.random()*n);
-		}
-
 		function randomInt(n)
 		{
 			return Math.floor(Math.random()*(n));
-		}
-
-		function randomInteger(a,b)
-		{
-			return Math.floor(Math.random()*(b-a)+a);
 		}
 
 		function deep_copy(array, to)
